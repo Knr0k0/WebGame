@@ -1,0 +1,87 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        border: "var(--color-border)",
+        input: "var(--color-input)",
+        ring: "var(--color-ring)",
+        background: "var(--color-background)",
+        foreground: "var(--color-foreground)",
+        primary: {
+          DEFAULT: "var(--color-primary)",
+          foreground: "var(--color-primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--color-secondary)",
+          foreground: "var(--color-secondary-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--color-destructive)",
+          foreground: "var(--color-destructive-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--color-muted)",
+          foreground: "var(--color-muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--color-accent)",
+          foreground: "var(--color-accent-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--color-popover)",
+          foreground: "var(--color-popover-foreground)",
+        },
+        card: {
+          DEFAULT: "var(--color-card)",
+          foreground: "var(--color-card-foreground)",
+        },
+        success: {
+          DEFAULT: "var(--color-success)",
+          foreground: "var(--color-success-foreground)",
+        },
+        warning: {
+          DEFAULT: "var(--color-warning)",
+          foreground: "var(--color-warning-foreground)",
+        },
+        error: {
+          DEFAULT: "var(--color-error)",
+          foreground: "var(--color-error-foreground)",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        heading: ['Orbitron', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
+        caption: ['Roboto Mono', 'monospace'],
+        data: ['JetBrains Mono', 'monospace'],
+      },
+      boxShadow: {
+        'neon': '0 4px 12px rgba(0, 212, 255, 0.15)',
+        'neon-intense': '0 4px 20px rgba(0, 212, 255, 0.3)',
+      },
+      animation: {
+        'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+      },
+      keyframes: {
+        'pulse-glow': {
+          '0%, 100%': {
+            boxShadow: '0 0 8px rgba(0, 212, 255, 0.3)',
+          },
+          '50%': {
+            boxShadow: '0 0 16px rgba(0, 212, 255, 0.6)',
+          },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
