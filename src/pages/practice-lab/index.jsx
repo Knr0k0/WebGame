@@ -7,6 +7,7 @@ import ControlPanel from './components/ControlPanel';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import SlowMotionControls from './components/SlowMotionControls';
 import ProfessionalReplay from './components/ProfessionalReplay';
+import GestureRecognitionCanvas from './components/GestureRecognitionCanvas';
 
 import Button from '../../components/ui/Button';
 
@@ -19,6 +20,7 @@ const PracticeLab = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [activePanel, setActivePanel] = useState('controls');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showGestureRecognition, setShowGestureRecognition] = useState(false);
   
   // Canvas and drawing state
   const [canvasSettings, setCanvasSettings] = useState({
@@ -218,15 +220,19 @@ const PracticeLab = () => {
 
             {/* Center - Drawing Canvas */}
             <div className="col-span-6">
-              <DrawingCanvas
-                isDrawing={!isPaused}
-                onDrawingChange={setIsDrawing}
-                showGrid={canvasSettings?.showGrid}
-                showGhost={canvasSettings?.showGhost && practiceMode === 'guided-tracing'}
-                ghostPath={ghostPath}
-                onStrokeComplete={handleStrokeComplete}
-                canvasBackground={canvasSettings?.canvasBackground}
-              />
+              {practiceMode === 'gesture-recognition' ? (
+                <GestureRecognitionCanvas />
+              ) : (
+                <DrawingCanvas
+                  isDrawing={!isPaused}
+                  onDrawingChange={setIsDrawing}
+                  showGrid={canvasSettings?.showGrid}
+                  showGhost={canvasSettings?.showGhost && practiceMode === 'guided-tracing'}
+                  ghostPath={ghostPath}
+                  onStrokeComplete={handleStrokeComplete}
+                  canvasBackground={canvasSettings?.canvasBackground}
+                />
+              )}
             </div>
 
             {/* Right Panel - Analytics/Controls */}

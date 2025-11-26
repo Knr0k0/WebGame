@@ -22,7 +22,8 @@ const ControlPanel = ({
     { value: 'guided-tracing', label: 'Guided Tracing', description: 'Follow ghost overlay paths' },
     { value: 'speed-challenge', label: 'Speed Challenge', description: 'Timed gesture practice' },
     { value: 'accuracy-drill', label: 'Accuracy Drill', description: 'Focus on precision' },
-    { value: 'custom-words', label: 'Custom Words', description: 'Practice specific vocabulary' }
+    { value: 'custom-words', label: 'Custom Words', description: 'Practice specific vocabulary' },
+    { value: 'gesture-recognition', label: 'Gesture Recognition', description: 'Template matching with 80% accuracy threshold' }
   ];
 
   const difficultyLevels = [
