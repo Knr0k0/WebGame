@@ -3,7 +3,7 @@ import { DollarRecognizer, Point } from '@/utils/dollar-recognizer';
 import { GestureTemplateManager, createDefaultTemplates, normalizePoints } from '@/utils/gestureTemplateManager';
 import Button from '../../../components/ui/Button';
 
-const ACCURACY_THRESHOLD = 0.80; // 80% accuracy
+const ACCURACY_THRESHOLD = 0.65; // 65% accuracy
 const MIN_STROKE_LENGTH = 10;
 
 // Sample letters available for tracing (you can extend this)
@@ -31,6 +31,8 @@ export default function GestureRecognitionCanvas() {
     currentStreak: 0
   });
   const [sessionActive, setSessionActive] = useState(false);
+  const [feedbackColor, setFeedbackColor] = useState('neutral'); // 'neutral', 'success', 'error'
+  const [recognitionTimeoutRef, setRecognitionTimeoutRef] = useState(null);
 
   const recognizerRef = useRef(new DollarRecognizer());
   const templateManagerRef = useRef(createDefaultTemplates());
@@ -38,6 +40,24 @@ export default function GestureRecognitionCanvas() {
   // Get random letter
   const getRandomLetter = useCallback(() => {
     return AVAILABLE_LETTERS[Math.floor(Math.random() * AVAILABLE_LETTERS.length)];
+  }, []);
+
+  // Create a canvas-based letter guide
+  const createLetterGuide = useCallback((letter) => {
+    const guideCanvas = document.createElement('canvas');
+    guideCanvas.width = 200;
+    guideCanvas.height = 200;
+    const ctx = guideCanvas.getContext('2d');
+    
+    ctx.fillStyle = '#E2E8F0';
+    ctx.font = 'bold 120px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(letter.toUpperCase(), 100, 100);
+    
+    const img = new Image();
+    img.src = guideCanvas.toDataURL();
+    return img;
   }, []);
 
   // Load tracing image when gesture changes
@@ -49,15 +69,17 @@ export default function GestureRecognitionCanvas() {
     
     const img = new Image();
     img.onload = () => {
+      console.log(`✅ Image loaded: ${letter}.png`);
       setTracingImage(img);
     };
     img.onerror = () => {
-      // Fallback: create a placeholder with the letter
-      console.log(`Image not found: ${imagePath}`);
-      setTracingImage(null);
+      // Fallback: create a generated letter guide
+      console.log(`⚠️ PNG not found, using generated letter guide for: ${letter}`);
+      const generatedImg = createLetterGuide(letter);
+      setTracingImage(generatedImg);
     };
     img.src = imagePath;
-  }, []);
+  }, [createLetterGuide]);
 
   // Initialize canvas and add default templates
   useEffect(() => {
@@ -106,6 +128,14 @@ export default function GestureRecognitionCanvas() {
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#0F172A';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw feedback color overlay
+    if (feedbackColor !== 'neutral') {
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = feedbackColor === 'success' ? '#22C55E' : '#EF4444';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = 1;
+    }
 
     // Draw tracing image as ghost/guide
     if (tracingImage && gestureMode === 'draw') {
@@ -206,9 +236,16 @@ export default function GestureRecognitionCanvas() {
     setIsDrawing(false);
 
     if (currentStroke.length < MIN_STROKE_LENGTH) {
-      setFeedback('Stroke too short. Please draw again.');
+      setFeedbackColor('error');
+      setTimeout(() => setFeedbackColor('neutral'), 800);
+      setCurrentStroke([]);
+      redrawCanvas();
       return;
     }
+
+    const newStroke = [...allStrokes, currentStroke];
+    setAllStrokes(newStroke);
+    setCurrentStroke([]);
 
     if (gestureMode === 'train') {
       // Training mode: add to training data
@@ -227,57 +264,71 @@ export default function GestureRecognitionCanvas() {
       );
     } else {
       // Recognition mode: recognize the gesture
-      const result = recognizerRef.current.recognize(currentStroke);
+      // Wait a bit to allow user to complete their gesture
+      if (recognitionTimeoutRef) {
+        clearTimeout(recognitionTimeoutRef);
+      }
 
-      // Calculate accuracy as a percentage (score ranges from 0 to ~1)
-      const accuracy = Math.min(result.score / 64, 1.0); // Normalize score
+      const timeout = setTimeout(() => {
+        const result = recognizerRef.current.recognize(newStroke.flat());
+        const accuracy = Math.min(result.score / 64, 1.0);
+        
+        // Check if the recognized gesture matches the target letter
+        // The result.name might include training samples like "a-0", "a-1", so we check the prefix
+        const recognizedLetter = result.name.split('-')[0];
+        const isMatch = accuracy >= ACCURACY_THRESHOLD && recognizedLetter === selectedGesture;
 
-      const isMatch = accuracy >= ACCURACY_THRESHOLD;
-
-      setRecognitionResult({
-        gesture: result.name,
-        score: result.score,
-        accuracy: (accuracy * 100).toFixed(2),
-        time: result.time,
-        isMatch
-      });
-
-      // Update stats
-      setStats(prevStats => ({
-        strokes: prevStats.strokes + 1,
-        accuracy: (prevStats.accuracy + parseFloat(accuracy * 100)) / 2,
-        successCount: prevStats.successCount + (isMatch ? 1 : 0),
-        totalAttempts: prevStats.totalAttempts + 1,
-        currentStreak: isMatch ? prevStats.currentStreak + 1 : 0
-      }));
-
-      setFeedback(
-        isMatch
-          ? `✓ Recognized: "${result.name}" (${accuracy.toFixed(2)}% accuracy)`
-          : `✗ Low confidence. Best match: "${result.name}" (${accuracy.toFixed(2)}%)`
-      );
-
-      // Add to history
-      setRecognitionHistory([
-        {
-          gesture: result.name,
+        setRecognitionResult({
+          gesture: recognizedLetter,
+          score: result.score,
           accuracy: (accuracy * 100).toFixed(2),
-          timestamp: new Date().toLocaleTimeString(),
-          isMatch: isMatch
-        },
-        ...recognitionHistory.slice(0, 9)
-      ]);
+          time: result.time,
+          isMatch
+        });
 
-      // Change to random letter after each stroke
-      setTimeout(() => {
-        const newLetter = getRandomLetter();
-        handleGestureChange(newLetter);
-      }, 500);
+        // Update stats
+        setStats(prevStats => ({
+          strokes: prevStats.strokes + 1,
+          accuracy: (prevStats.accuracy + parseFloat(accuracy * 100)) / 2,
+          successCount: prevStats.successCount + (isMatch ? 1 : 0),
+          totalAttempts: prevStats.totalAttempts + 1,
+          currentStreak: isMatch ? prevStats.currentStreak + 1 : 0
+        }));
+
+        // Flash feedback color instead of showing text
+        if (isMatch) {
+          setFeedbackColor('success');
+        } else {
+          setFeedbackColor('error');
+        }
+
+        setTimeout(() => setFeedbackColor('neutral'), 900);
+
+        // Add to history
+        setRecognitionHistory([
+          {
+            gesture: result.name,
+            accuracy: (accuracy * 100).toFixed(2),
+            timestamp: new Date().toLocaleTimeString(),
+            isMatch: isMatch
+          },
+          ...recognitionHistory.slice(0, 9)
+        ]);
+
+        // Change to random letter after successful recognition
+        if (isMatch) {
+          setTimeout(() => {
+            const newLetter = getRandomLetter();
+            handleGestureChange(newLetter);
+          }, 1000);
+        }
+
+        setFeedback('');
+      }, 400);
+
+      setRecognitionTimeoutRef(timeout);
     }
 
-    const newStroke = [...allStrokes, currentStroke];
-    setAllStrokes(newStroke);
-    setCurrentStroke([]);
     redrawCanvas();
   };
 
@@ -502,20 +553,7 @@ export default function GestureRecognitionCanvas() {
         )}
       </div>
 
-      {/* Feedback */}
-      {feedback && (
-        <div
-          className={`p-4 rounded font-semibold ${
-            feedback.includes('✓')
-              ? 'bg-green-900 text-green-200'
-              : feedback.includes('✗')
-              ? 'bg-red-900 text-red-200'
-              : 'bg-blue-900 text-blue-200'
-          }`}
-        >
-          {feedback}
-        </div>
-      )}
+
 
       {/* Recognition Result Details */}
       {recognitionResult && gestureMode === 'draw' && (
